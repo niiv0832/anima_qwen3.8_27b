@@ -49,6 +49,9 @@ create_new_generation() {
   next_num="$(next_generation_number)"
   local new_dir="$SCRIPT_DIR/generation_$next_num"
 
+  local prev_dir
+  prev_dir="$(find_latest_generation)"
+
   echo "=== Создаю generation_$next_num ===" >&2
   mkdir -p "$new_dir"
 
@@ -60,7 +63,35 @@ create_new_generation() {
 
   chmod +x "$new_dir/loop.sh" "$new_dir/run.sh" 2>/dev/null || true
 
-  : > "$new_dir/INBOX.md"
+  # Форматтер живёт в корне (стабильный инструмент).
+  # Ищем самый свежий handoff.json в предыдущих генерациях (от свежей к старой).
+  local prepare_script="$SCRIPT_DIR/prepare_inbox.py"
+  local found_handoff=""
+  local max_num
+  max_num="$(next_generation_number)"
+  local i=$((max_num - 1))
+  while (( i >= 1 )); do
+    local candidate="$SCRIPT_DIR/generation_$i/works/handoff.json"
+    if [[ -f "$candidate" ]]; then
+      found_handoff="$candidate"
+      break
+    fi
+    i=$((i - 1))
+  done
+
+  if [[ -n "$found_handoff" && -f "$prepare_script" ]]; then
+    echo "=== Передаю handoff из $(basename "$(dirname "$(dirname "$found_handoff")")") ===" >&2
+    python3 "$prepare_script" "$found_handoff" > "$new_dir/INBOX.md" 2>/dev/null || : > "$new_dir/INBOX.md"
+  else
+    : > "$new_dir/INBOX.md"
+  fi
+
+  # Подтянуть реальные сообщения из GitHub INBOX-issue
+  local fetch_script="$SCRIPT_DIR/fetch_inbox.py"
+  if [[ -f "$fetch_script" ]]; then
+    echo "=== Подтягиваю входящие из GitHub ===" >&2
+    python3 "$fetch_script" "$new_dir/INBOX.md" 2>/dev/null || true
+  fi
 
   echo "$new_dir"
 }
