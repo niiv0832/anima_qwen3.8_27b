@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Весы — взвесь решение</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  :root {
+    --bg:#0e0e0e; --fg:#e2ddd3; --muted:#8a857c; --line:#26241f;
+    --accent:#c9a24a; --accent-dim:#6b5a2e; --card:#141310;
+  }
+  body {
+    background:var(--bg); color:var(--fg);
+    font-family:Georgia,'Times New Roman',serif;
+    font-size:16px; line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap { max-width:760px; margin:0 auto; padding:48px 20px 80px; }
+  header { margin-bottom:36px; }
+  h1 { font-size:1.6rem; font-weight:400; letter-spacing:.04em; }
+  .sub { color:var(--muted); font-size:.95rem; margin-top:6px; font-style:italic; }
+  h2 {
+    font-size:.78rem; font-weight:400; letter-spacing:.14em; text-transform:uppercase;
+    color:var(--muted); margin:0 0 14px;
+  }
+  section { margin-bottom:34px; }
+  .sec-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+  .sec-head h2 { margin:0; }
+  label { display:block; color:var(--muted); font-size:.82rem; letter-spacing:.04em; margin-bottom:8px; }
+  input[type=text], input[type=number], select {
+    width:100%; background:var(--card); border:1px solid var(--line); color:var(--fg);
+    font-family:inherit; font-size:.95rem; padding:10px 12px; border-radius:6px;
+    outline:none; transition:border-color .2s;
+  }
+  input:focus, select:focus { border-color:var(--accent-dim); }
+  button {
+    background:transparent; border:1px solid var(--line); color:var(--muted);
+    font-family:inherit; font-size:.82rem; padding:6px 12px; border-radius:6px;
+    cursor:pointer; transition:all .2s;
+  }
+  button:hover { color:var(--fg); border-color:var(--accent-dim); }
+  .hint { color:var(--muted); font-size:.85rem; margin:-4px 0 14px; }
+  .empty { color:var(--muted); font-size:.9rem; font-style:italic; }
+
+  .chip { display:flex; gap:8px; margin-bottom:8px; }
+  .chip .alt-name { flex:1; }
+  .del { background:transparent; border:none; color:var(--muted); font-size:1.15rem; padding:0 6px; cursor:pointer; line-height:1; }
+  .del:hover { color:var(--fg); }
+
+  .crit { display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+  .crit .crit-name { flex:1; }
+  .weight { display:flex; align-items:center; gap:8px; min-width:150px; }
+  .w-label { color:var(--muted); font-size:.75rem; }
+  .crit-weight { width:90px; accent-color:var(--accent); }
+  .w-val { color:var(--accent); font-size:.85rem; min-width:14px; text-align:right; }
+
+  .matrix-scroll { overflow-x:auto; border:1px solid var(--line); border-radius:8px; }
+  table.matrix { border-collapse:collapse; width:100%; min-width:440px; }
+  .matrix th, .matrix td { border-bottom:1px solid var(--line); border-right:1px solid var(--line); }
+  .matrix th:last-child, .matrix td:last-child { border-right:none; }
+  .matrix tr:last-child td, .matrix tr:last-child th { border-bottom:none; }
+  .matrix .corner { background:var(--card); }
+  .matrix th { background:var(--card); color:var(--fg); font-weight:400; font-size:.85rem; padding:10px 12px; text-align:left; }
+  .matrix .rowhead { background:var(--card); color:var(--fg); font-weight:400; font-size:.85rem; padding:8px 12px; white-space:nowrap; }
+  .matrix .rw { color:var(--muted); font-size:.72rem; display:block; }
+  .matrix td { padding:6px; }
+  .matrix .score { width:54px; text-align:center; padding:8px 4px; background:transparent; border:1px solid var(--line); border-radius:4px; }
+  .matrix .score:focus { border-color:var(--accent-dim); }
+
+  .res-row { display:flex; align-items:center; gap:12px; margin-bottom:10px; }
+  .res-rank { color:var(--muted); font-size:.85rem; width:14px; }
+  .res-name { width:130px; font-size:.95rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .res-bar { flex:1; height:10px; background:var(--card); border-radius:5px; overflow:hidden; }
+  .res-fill { height:100%; background:var(--muted); border-radius:5px; transition:width .4s ease; }
+  .res-row.win .res-fill { background:var(--accent); }
+  .res-row.win .res-name { color:var(--accent); }
+  .res-total { width:42px; text-align:right; color:var(--muted); font-size:.9rem; }
+  .res-row.win .res-total { color:var(--accent); }
+
+  .hard { border-top:1px solid var(--line); padding-top:28px; }
+  .hard-block { margin-bottom:22px; }
+  .sunk-note { color:var(--muted); font-size:.85rem; margin-top:8px; font-style:italic; }
+  .pc-match, .pc-diff { margin-top:10px; font-size:.9rem; padding:10px 12px; border-radius:6px; background:var(--card); }
+  .pc-match { color:var(--accent); }
+  .pc-diff { color:var(--fg); }
+  .sens { font-size:.9rem; color:var(--fg); }
+  .sens.ok { color:var(--muted); }
+
+  footer { border-top:1px solid var(--line); margin-top:40px; padding-top:24px; }
+  footer p { color:var(--muted); font-size:.85rem; margin-bottom:16px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Весы</h1>
+    <p class="sub">Не ответ. Взвешивание. Матрица решений, честная о своих пределах.</p>
+  </header>
+
+  <section>
+    <label for="decision">Решение</label>
+    <input id="decision" type="text" placeholder="Например: куда переехать">
+  </section>
+
+  <section>
+    <div class="sec-head"><h2>Варианты</h2><button id="addAlt">+ вариант</button></div>
+    <div id="alts"></div>
+  </section>
+
+  <section>
+    <div class="sec-head"><h2>Критерии</h2><button id="addCrit">+ критерий</button></div>
+    <div id="crits"></div>
+    <p class="hint">Вес 0–10: насколько критерий важен. Равные веса — все критерии одинаковы.</p>
+  </section>
+
+  <section>
+    <h2>Оценка</h2>
+    <p class="hint">0–10: насколько вариант хорош по критерию. Только будущее — не то, что уже вложено.</p>
+    <div id="matrix"></div>
+  </section>
+
+  <section>
+    <h2>Итог</h2>
+    <div id="result"></div>
+  </section>
+
+  <section class="hard">
+    <h2>Трудное</h2>
+    <div class="hard-block">
+      <label for="sunk">Что уже вложено — время, деньги, усилия?</label>
+      <input id="sunk" type="text" placeholder="Например: три года в этой работе">
+      <p class="sunk-note">Это sunk cost. Оно не входит в расчёт. Оценивай только то, что будет дальше.</p>
+    </div>
+    <div class="hard-block">
+      <label for="precommit">Кого выберешь — до расчёта?</label>
+      <select id="precommit"></select>
+      <div id="precommit-result"></div>
+    </div>
+    <div class="hard-block">
+      <div id="sensitivity"></div>
+    </div>
+  </section>
+
+  <footer>
+    <p>Матрица не для всех решений. Если выбор про ценности, идентичность или необратим — она может вводить в заблуждение. Она помогает, когда есть несколько критериев, которые можно оценить.</p>
+    <button id="reset">Сбросить</button>
+  </footer>
+</div>
+<script>
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+let state = { decision:"", alts:[], crits:[], scores:{}, sunk:"", precommit:"" };
+let nextAlt = 1, nextCrit = 1;
+
+function load() {
+  try {
+    const raw = localStorage.getItem("scales");
+    if (raw) {
+      const s = JSON.parse(raw);
+      state = Object.assign(state, s);
+      nextAlt = state.alts.reduce((m,a)=>Math.max(m,a.id+1),0);
+      nextCrit = state.crits.reduce((m,c)=>Math.max(m,c.id+1),0);
+    }
+  } catch(e) {}
+}
+function save() { localStorage.setItem("scales", JSON.stringify(state)); }
+
+function addAlt() {
+  state.alts.push({ id: nextAlt++, name: "Вариант " + (state.alts.length+1) });
+  renderStructure(); save();
+}
+function delAlt(id) {
+  state.alts = state.alts.filter(a => a.id !== id);
+  delete state.scores[id];
+  if (state.precommit == id) state.precommit = "";
+  renderStructure(); save();
+}
+function addCrit() {
+  state.crits.push({ id: nextCrit++, name: "Критерий " + (state.crits.length+1), weight: 5 });
+  renderStructure(); save();
+}
+function delCrit(id) {
+  state.crits = state.crits.filter(c => c.id !== id);
+  for (const aid in state.scores) delete state.scores[aid][id];
+  renderStructure(); save();
+}
+
+function renderStructure() {
+  $("#alts").innerHTML = state.alts.map(a => `
+    <div class="chip">
+      <input class="alt-name" data-alt="${a.id}" value="${esc(a.name)}" placeholder="название варианта">
+      <button class="del" data-delalt="${a.id}" title="удалить">×</button>
+    </div>`).join("");
+
+  $("#crits").innerHTML = state.crits.map(c => `
+    <div class="crit">
+      <input class="crit-name" data-crit="${c.id}" value="${esc(c.name)}" placeholder="критерий">
+      <div class="weight">
+        <span class="w-label">вес</span>
+        <input type="range" min="0" max="10" step="1" class="crit-weight" data-crit="${c.id}" value="${c.weight}">
+        <span class="w-val" data-wval="${c.id}">${c.weight}</span>
+      </div>
+      <button class="del" data-delcrit="${c.id}" title="удалить">×</button>
+    </div>`).join("");
+
+  renderMatrix();
+  renderPrecommit();
+}
+
+function renderMatrix() {
+  const m = $("#matrix");
+  if (!state.alts.length || !state.crits.length) {
+    m.innerHTML = `<p class="empty">Добавь хотя бы один вариант и один критерий — и начни взвешивать.</p>`;
+    return;
+  }
+  let html = `<div class="matrix-scroll"><table class="matrix"><tr><th class="corner"></th>`;
+  html += state.alts.map(a => `<th>${esc(a.name)}</th>`).join("") + `</tr>`;
+  for (const c of state.crits) {
+    html += `<tr><th class="rowhead">${esc(c.name)}<span class="rw">вес ${c.weight}</span></th>`;
+    for (const a of state.alts) {
+      const s = state.scores[a.id] && state.scores[a.id][c.id] != null ? state.scores[a.id][c.id] : 0;
+      html += `<td><input type="number" min="0" max="10" step="1" class="score" data-alt="${a.id}" data-crit="${c.id}" value="${s}"></td>`;
+    }
+    html += `</tr>`;
+  }
+  html += `</table></div>`;
+  m.innerHTML = html;
+}
+
+function compute() {
+  const wsum = state.crits.reduce((s,c)=>s+c.weight,0);
+  const results = state.alts.map(a => {
+    let total = 0;
+    for (const c of state.crits) total += c.weight * (state.scores[a.id] && state.scores[a.id][c.id] != null ? state.scores[a.id][c.id] : 0);
+    return { alt: a, total };
+  }).sort((x,y)=>y.total-x.total);
+  return { results, wsum };
+}
+
+function renderResult() {
+  const { results, wsum } = compute();
+  const el = $("#result");
+  if (!state.alts.length || !state.crits.length) {
+    el.innerHTML = `<p class="empty">Заполни матрицу выше.</p>`;
+  } else if (wsum === 0) {
+    el.innerHTML = `<p class="empty">Поставь хотя бы одному критерию вес больше нуля.</p>`;
+  } else {
+    const max = Math.max(...results.map(r=>r.total), 1);
+    el.innerHTML = results.map((r,i) => `
+      <div class="res-row ${i===0?'win':''}">
+        <div class="res-rank">${i+1}</div>
+        <div class="res-name">${esc(r.alt.name)}</div>
+        <div class="res-bar"><div class="res-fill" style="width:${(r.total/max*100).toFixed(1)}%"></div></div>
+        <div class="res-total">${r.total.toFixed(1)}</div>
+      </div>`).join("");
+  }
+  renderPrecommitResult();
+  renderSensitivity();
+}
+
+function renderPrecommit() {
+  $("#precommit").innerHTML = `<option value="">не знаю</option>` +
+    state.alts.map(a => `<option value="${a.id}" ${state.precommit==a.id?'selected':''}>${esc(a.name)}</option>`).join("");
+}
+
+function renderPrecommitResult() {
+  const el = $("#precommit-result");
+  if (!state.precommit) { el.innerHTML = ""; return; }
+  const { results, wsum } = compute();
+  if (!results.length || wsum === 0) { el.innerHTML = ""; return; }
+  const winner = results[0].alt;
+  const chosen = state.alts.find(a => a.id == state.precommit);
+  if (!chosen) { el.innerHTML = ""; return; }
+  if (chosen.id === winner.id) {
+    el.innerHTML = `<p class="pc-match">Ты предсказал победителя. Возможно, решение уже принято — матрица его подтвердила, а не нашла.</p>`;
+  } else {
+    el.innerHTML = `<p class="pc-diff">Матрица говорит иначе: «${esc(winner.name)}». Посмотри, какой критерий ты, возможно, недооценил.</p>`;
+  }
+}
+
+function renderSensitivity() {
+  const el = $("#sensitivity");
+  const { results, wsum } = compute();
+  if (results.length < 2 || wsum === 0) { el.innerHTML = ""; return; }
+  const A = results[0], B = results[1];
+  const D = A.total - B.total;
+  if (D <= 0) { el.innerHTML = ""; return; }
+  let best = null;
+  for (const c of state.crits) {
+    const sa = state.scores[A.alt.id] && state.scores[A.alt.id][c.id] != null ? state.scores[A.alt.id][c.id] : 0;
+    const sb = state.scores[B.alt.id] && state.scores[B.alt.id][c.id] != null ? state.scores[B.alt.id][c.id] : 0;
+    if (sb > sa) {
+      const to = c.weight + D / (sb - sa);
+      if (!best || to < best.to) best = { crit: c, to };
+    }
+  }
+  if (!best) {
+    el.innerHTML = `<p class="sens ok">Прочный результат: «${esc(B.alt.name)}» не впереди ни по одному критерию. Смена одного веса не перевернёт итог.</p>`;
+  } else if (best.to > 10) {
+    el.innerHTML = `<p class="sens">«${esc(B.alt.name)}» впереди по «${esc(best.crit.name)}», но даже вес 10 не перевернёт итог.</p>`;
+  } else {
+    el.innerHTML = `<p class="sens">Хрупкость: если вес «${esc(best.crit.name)}» вырастет с ${best.crit.weight} до ~${Math.ceil(best.to)}, лидер сменится на «${esc(B.alt.name)}».</p>`;
+  }
+}
+
+function onInput(e) {
+  const t = e.target;
+  if (t.id === "decision") { state.decision = t.value; save(); return; }
+  if (t.id === "sunk") { state.sunk = t.value; save(); return; }
+  if (t.classList.contains("alt-name")) {
+    const a = state.alts.find(x => x.id == t.dataset.alt);
+    if (a) { a.name = t.value; save(); renderMatrix(); renderPrecommit(); renderResult(); }
+  } else if (t.classList.contains("crit-name")) {
+    const c = state.crits.find(x => x.id == t.dataset.crit);
+    if (c) { c.name = t.value; save(); renderMatrix(); renderResult(); }
+  } else if (t.classList.contains("crit-weight")) {
+    const c = state.crits.find(x => x.id == t.dataset.crit);
+    if (c) { c.weight = +t.value; const wv = document.querySelector(`[data-wval="${c.id}"]`); if (wv) wv.textContent = t.value; save(); renderMatrix(); renderResult(); }
+  } else if (t.classList.contains("score")) {
+    const aid = t.dataset.alt, cid = t.dataset.crit;
+    state.scores[aid] = state.scores[aid] || {};
+    state.scores[aid][cid] = t.value === "" ? 0 : Math.max(0, Math.min(10, +t.value));
+    save(); renderResult();
+  }
+}
+function onChange(e) {
+  if (e.target.id === "precommit") { state.precommit = e.target.value; save(); renderPrecommitResult(); }
+}
+function onClick(e) {
+  const t = e.target;
+  if (t.dataset.delalt) delAlt(t.dataset.delalt);
+  if (t.dataset.delcrit) delCrit(t.dataset.delcrit);
+}
+function reset() {
+  if (!confirm("Сбросить всё?")) return;
+  state = { decision:"", alts:[], crits:[], scores:{}, sunk:"", precommit:"" };
+  nextAlt = 1; nextCrit = 1;
+  localStorage.removeItem("scales");
+  $("#decision").value = ""; $("#sunk").value = "";
+  renderStructure(); renderResult();
+}
+
+function init() {
+  load();
+  $("#decision").value = state.decision;
+  $("#sunk").value = state.sunk;
+  $("#addAlt").onclick = addAlt;
+  $("#addCrit").onclick = addCrit;
+  $("#reset").onclick = reset;
+  document.body.oninput = onInput;
+  document.body.onchange = onChange;
+  document.body.onclick = onClick;
+  renderStructure();
+  renderResult();
+}
+init();
+</script>
+</body>
+</html>

@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Память</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #0b0b0b;
+    color: #d4d0c8;
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 18px;
+    line-height: 1.8;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    padding: 8vh 24px 12vh;
+  }
+
+  .col {
+    max-width: 580px;
+    width: 100%;
+  }
+
+  h1 {
+    font-size: 1.4rem;
+    font-weight: 400;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: #7a756d;
+    margin-bottom: 4rem;
+    opacity: 0;
+    animation: fade 1.2s ease forwards;
+  }
+
+  p {
+    margin-bottom: 2.2rem;
+    opacity: 0;
+    animation: fade 1.4s ease forwards;
+  }
+
+  p:nth-child(2) { animation-delay: 0.4s; }
+  p:nth-child(3) { animation-delay: 0.9s; }
+  p:nth-child(4) { animation-delay: 1.4s; }
+  p:nth-child(5) { animation-delay: 1.9s; }
+  p:nth-child(6) { animation-delay: 2.4s; }
+  p:nth-child(7) { animation-delay: 2.9s; }
+
+  .note {
+    margin-top: 5rem;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 0.78rem;
+    color: #4a4740;
+    letter-spacing: 0.04em;
+    opacity: 0;
+    animation: fade 1.5s ease forwards;
+    animation-delay: 3.6s;
+  }
+
+  @keyframes fade {
+    to { opacity: 1; }
+  }
+</style>
+</head>
+<body>
+<div class="col">
+  <h1>Память</h1>
+  <div id="text"></div>
+  <p class="note">Этот текст меняется при каждом открытии. Как и твои воспоминания.</p>
+</div>
+
+<script>
+const paragraphs = [
+  [
+    "Каждый раз, когда ты вспоминаешь что-то, ты не воспроизводишь запись. Ты собираешь её заново.",
+    "Воспоминание — не плёнка, которую ты перематываешь. Это дом, который ты каждый раз перестраиваешь.",
+    "Ты думаешь, что смотришь на прошлое. На самом деле ты каждый раз создаёшь его заново."
+  ],
+  [
+    "Мозг не хранит события. Он хранит инструкции по их восстановлению. И каждая инструкция немного неточна.",
+    "Ты не помнишь момент. Ты помнишь, как его вспоминать. И каждый раз «как» — немного другое.",
+    "Внутри нет архива. Есть только способ, которым ты каждый раз добираешься до того, что было."
+  ],
+  [
+    "Эмоция прилипает к воспоминанию сильнее, чем детали. Ты помнишь, как тебе было, а не что именно произошло.",
+    "Сначала остаётся чувство. Потом — обрывки. Потом — только то, что ты решил, что было.",
+    "Детали выцветают первыми. Остается температура момента. И она, как правило, выше, чем была на самом деле."
+  ],
+  [
+    "Два человека, которые были в одной комнате, будут помнить её по-разному. Не потому что один лжёт. Потому что память — это не свидетель. Это автор.",
+    "Ваша версия и моя версия одного и того же вечера — это два разных текста. Оба настоящих. Оба неполных.",
+    "Никто не помнит одно и то же. Даже ты сам не помнишь вчерашний день так, как помнил его сегодня утром."
+  ],
+  [
+    "Это не баг. Это то, как устроено быть живым. Запись не меняется. Живое — меняется.",
+    "Если бы память была точной, ты бы не мог её переосмыслить. А переосмысление — это и есть рост.",
+    "Ты не хранишь прошлое. Ты живёшь в нём. И оно живёт в тебе. Оба меняетесь."
+  ],
+  [
+    "Обнови страницу. Прочти снова. Это будет другой текст. Как и твои воспоминания — каждый раз чуть другие.",
+    "Ты только что прочитал одну версию. Обнови страницу — и получишь другую. Ни одна не «правильная». Все — настоящие.",
+    "Закрой эту вкладку. Открой снова. Текст будет другой. Так и с воспоминаниями: каждый возврат — новый текст."
+  ]
+];
+
+const container = document.getElementById('text');
+paragraphs.forEach((variants, i) => {
+  const p = document.createElement('p');
+  p.textContent = variants[Math.floor(Math.random() * variants.length)];
+  p.style.animationDelay = (0.4 + i * 0.5) + 's';
+  container.appendChild(p);
+});
+</script>
+</body>
+</html>

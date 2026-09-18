@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Амбиент</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #0a0a0a;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    color: #666;
+    overflow: hidden;
+  }
+
+  #canvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
+  }
+
+  .ui {
+    position: relative;
+    z-index: 1;
+    text-align: center;
+  }
+
+  h1 {
+    font-size: 1.2rem;
+    font-weight: 300;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: #555;
+    margin-bottom: 2rem;
+  }
+
+  #start {
+    background: none;
+    border: 1px solid #444;
+    color: #888;
+    padding: 12px 32px;
+    font-size: 0.9rem;
+    letter-spacing: 0.1em;
+    cursor: pointer;
+    transition: all 0.3s;
+  }
+
+  #start:hover {
+    border-color: #888;
+    color: #ccc;
+  }
+
+  .hint {
+    margin-top: 1.5rem;
+    font-size: 0.75rem;
+    color: #444;
+    letter-spacing: 0.05em;
+  }
+</style>
+</head>
+<body>
+<canvas id="canvas"></canvas>
+<div class="ui">
+  <h1>Амбиент</h1>
+  <button id="start">Начать</button>
+  <p class="hint">Двигай мышью. Кликай.</p>
+</div>
+
+<script>
+const SCALE = [
+  130.81, 146.83, 164.81, 196.00, 220.00,
+  261.63, 293.66, 329.63, 392.00, 440.00,
+  523.25, 587.33, 659.25, 784.00, 880.00
+];
+
+let audioCtx = null;
+let running = false;
+let mouseX = 0.5;
+let mouseY = 0.5;
+let particles = [];
+let dry, delay;
+
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+
+function resize() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+window.addEventListener('resize', resize);
+resize();
+
+function updateMouse(x, y) {
+  mouseX = x / window.innerWidth;
+  mouseY = y / window.innerHeight;
+}
+
+window.addEventListener('mousemove', (e) => updateMouse(e.clientX, e.clientY));
+window.addEventListener('touchmove', (e) => {
+  e.preventDefault();
+  const t = e.touches[0];
+  updateMouse(t.clientX, t.clientY);
+}, { passive: false });
+
+window.addEventListener('click', () => { if (running) playNote(); });
+window.addEventListener('touchstart', (e) => {
+  if (running) {
+    const t = e.touches[0];
+    updateMouse(t.clientX, t.clientY);
+    playNote();
+  }
+}, { passive: true });
+
+function createAudio() {
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+  const master = audioCtx.createGain();
+  master.gain.value = 0.25;
+  master.connect(audioCtx.destination);
+
+  dry = audioCtx.createGain();
+  dry.gain.value = 0.6;
+  dry.connect(master);
+
+  delay = audioCtx.createDelay(1.0);
+  delay.delayTime.value = 0.35;
+  const feedback = audioCtx.createGain();
+  feedback.gain.value = 0.3;
+  const wet = audioCtx.createGain();
+  wet.gain.value = 0.4;
+
+  delay.connect(wet);
+  wet.connect(master);
+  delay.connect(feedback);
+  feedback.connect(delay);
+}
+
+function playNote() {
+  if (!audioCtx) return;
+
+  const scaleIndex = Math.floor(mouseY * (SCALE.length - 1));
+  const freq = SCALE[scaleIndex];
+  const detune = (Math.random() - 0.5) * 10;
+
+  const osc = audioCtx.createOscillator();
+  osc.type = 'sine';
+  osc.frequency.value = freq;
+  osc.detune.value = detune;
+
+  const gain = audioCtx.createGain();
+  const now = audioCtx.currentTime;
+
+  const attack = 0.1 + Math.random() * 0.2;
+  const decay = 0.5 + Math.random() * 0.5;
+  const sustain = 0.1 + Math.random() * 0.1;
+  const release = 1.0 + Math.random() * 1.0;
+
+  gain.gain.setValueAtTime(0, now);
+  gain.gain.linearRampToValueAtTime(0.5, now + attack);
+  gain.gain.exponentialRampToValueAtTime(sustain, now + attack + decay);
+  gain.gain.exponentialRampToValueAtTime(0.001, now + attack + decay + release);
+
+  osc.connect(gain);
+  gain.connect(dry);
+  gain.connect(delay);
+
+  osc.start(now);
+  osc.stop(now + attack + decay + release + 0.1);
+
+  const hue = 30 + (scaleIndex / (SCALE.length - 1)) * 30;
+  particles.push({
+    x: canvas.width / 2,
+    y: canvas.height / 2,
+    r: 0,
+    maxR: 30 + Math.random() * 40,
+    alpha: 0.25,
+    hue: hue
+  });
+}
+
+let lastNoteTime = 0;
+function autoGenerate(time) {
+  if (!running) return;
+  const interval = 2000 - mouseX * 1700;
+  if (time - lastNoteTime > interval) {
+    if (Math.random() < 0.7) {
+      playNote();
+      lastNoteTime = time;
+    }
+  }
+}
+
+function draw() {
+  ctx.fillStyle = 'rgba(10, 10, 10, 0.15)';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+    p.r += 0.5;
+    p.alpha *= 0.98;
+
+    if (p.alpha < 0.01 || p.r > p.maxR) {
+      particles.splice(i, 1);
+      continue;
+    }
+
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+    ctx.strokeStyle = `hsla(${p.hue}, 20%, 60%, ${p.alpha})`;
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  }
+}
+
+function loop(time) {
+  autoGenerate(time);
+  draw();
+  requestAnimationFrame(loop);
+}
+
+document.getElementById('start').addEventListener('click', () => {
+  if (!running) {
+    createAudio();
+    running = true;
+    document.getElementById('start').style.display = 'none';
+    document.querySelector('.hint').textContent = 'Мышь: темп (лево-право) и регистр (вверх-вниз). Клик — нота.';
+    requestAnimationFrame(loop);
+  }
+});
+</script>
+</body>
+</html>

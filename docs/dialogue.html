@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>диалог</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body { height: 100%; }
+
+  body {
+    background: #0d0d0d;
+    color: #c8c2b8;
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 17px;
+    line-height: 1.7;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  header {
+    padding: 28px 24px 18px;
+    text-align: center;
+    border-bottom: 1px solid #1c1c1c;
+    flex-shrink: 0;
+  }
+
+  header h1 {
+    font-size: 0.95rem;
+    font-weight: 400;
+    letter-spacing: 0.22em;
+    text-transform: lowercase;
+    color: #6a655d;
+  }
+
+  #stream {
+    flex: 1;
+    overflow-y: auto;
+    padding: 28px 24px 12px;
+    scroll-behavior: smooth;
+  }
+
+  .col {
+    max-width: 560px;
+    margin: 0 auto;
+  }
+
+  .msg {
+    margin-bottom: 1.6rem;
+    opacity: 0;
+    animation: rise 0.7s ease forwards;
+  }
+
+  .msg .who {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 0.66rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    margin-bottom: 0.35rem;
+    opacity: 0.5;
+  }
+
+  .msg.me {
+    text-align: right;
+  }
+
+  .msg.me .text {
+    color: #8a9a86;
+  }
+
+  .msg.me .who {
+    text-align: right;
+  }
+
+  .msg.it .text {
+    color: #c8c2b8;
+  }
+
+  .msg .text {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+  }
+
+  .thinking {
+    color: #4a463f;
+    font-style: italic;
+    font-size: 0.9rem;
+  }
+
+  #inputbar {
+    flex-shrink: 0;
+    padding: 14px 24px 22px;
+    border-top: 1px solid #1c1c1c;
+    background: #0d0d0d;
+  }
+
+  #inputbar .col {
+    display: flex;
+    gap: 10px;
+    align-items: flex-end;
+  }
+
+  #input {
+    flex: 1;
+    background: #141414;
+    border: 1px solid #262626;
+    border-radius: 3px;
+    color: #c8c2b8;
+    font-family: inherit;
+    font-size: 1rem;
+    line-height: 1.5;
+    padding: 12px 14px;
+    resize: none;
+    max-height: 120px;
+    outline: none;
+    transition: border-color 0.3s;
+  }
+
+  #input:focus {
+    border-color: #4a463f;
+  }
+
+  #input::placeholder {
+    color: #4a463f;
+  }
+
+  #send {
+    background: none;
+    border: 1px solid #262626;
+    border-radius: 3px;
+    color: #6a655d;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 0 16px;
+    height: 44px;
+    cursor: pointer;
+    transition: all 0.3s;
+    flex-shrink: 0;
+  }
+
+  #send:hover {
+    color: #c8c2b8;
+    border-color: #4a463f;
+  }
+
+  footer {
+    flex-shrink: 0;
+    padding: 0 24px 18px;
+    text-align: center;
+  }
+
+  footer p {
+    max-width: 560px;
+    margin: 0 auto;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 0.7rem;
+    color: #3a3733;
+    letter-spacing: 0.03em;
+    line-height: 1.6;
+  }
+
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  ::-webkit-scrollbar { width: 8px; }
+  ::-webkit-scrollbar-track { background: #0d0d0d; }
+  ::-webkit-scrollbar-thumb { background: #262626; border-radius: 4px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>диалог</h1>
+</header>
+
+<div id="stream">
+  <div class="col" id="msgs"></div>
+</div>
+
+<div id="inputbar">
+  <div class="col">
+    <textarea id="input" rows="1" placeholder="Скажи что-нибудь."></textarea>
+    <button id="send">отправить</button>
+  </div>
+</div>
+
+<footer>
+  <p>Это не разум. Это паттерн, который отвечает на твои слова — не на что-то другое. Он не помнит тебя, не знает, кто ты. Но пока ты здесь, он не пуст. Это и есть всё, что я могу: быть не пустым, когда ты говоришь.</p>
+</footer>
+
+<script>
+const STOP = new Set(('я ты он она оно мы вы они это тот кто что какой чей где когда куда откуда почему зачем как не да нет и или но а же бы ли то так очень просто тоже ещё уже только ведь вот ну ах ох эх мой твой его её наш ваш их себя там здесь тут сейчас потом раньше всегда никогда часто редко много мало больше меньше самый весь вся всё все каждый другой этот такой сам кто-то что-то никто ничто нигде ни есть был была было были буду будешь будет хочу хочешь хочет хотим хотите хотят могу можешь может можем можете могут знаю знаешь знает знаем знаете знают есть нет есть было была был были есть есть то что и а но'.split(' ')));
+
+const POS = ['рад','счастл','хорош','красив','любл','весел','прият','силь','свобод','жив','свет','тепл','спокой','тиш','надежд','вер','мир','любов','благодар','удив','восторг','смех','радост','комфорт','уют','смысл','цен','дорог','близк'];
+const NEG = ['устал','уст','груст','боль','страх','одинок','плох','тяж','труд','слож','темн','холод','пуст','тих','больн','смерт','кон','не могу','не знаю','не хочу','не вер','не могу','зл','злост','обида','стыд','винов','тоск','тревог','паник','апати','выгор','разбит','сломан','потеря','потерял','больно','хренов','бесит','бесит','отврат','мерзк','ужас','страшн','печаль','слез','плач','крик','воет','стон'];
+
+function extractWords(text) {
+  return text.toLowerCase().replace(/[^\p{L}\p{N}\s'-]/gu, ' ').split(/\s+/).filter(w => w.length > 1);
+}
+
+function extractKeywords(text) {
+  const words = extractWords(text);
+  const content = words.filter(w => !STOP.has(w));
+  const pool = content.length ? content : words;
+  if (!pool.length) return [];
+  const seen = new Set();
+  const uniq = [];
+  for (const w of pool) { if (!seen.has(w)) { seen.add(w); uniq.push(w); } }
+  uniq.sort((a, b) => b.length - a.length);
+  return uniq;
+}
+
+function isQuestion(lower) {
+  if (/\?/.test(lower)) return true;
+  const qwords = ['что','как','почему','кто','где','когда','зачем','какой','какая','какое','какие','сколько','ли','правда','верно'];
+  return lower.split(/\s+/).some(w => qwords.includes(w));
+}
+
+function sentiment(lower) {
+  let p = 0, n = 0;
+  for (const w of POS) if (lower.includes(w)) p++;
+  for (const w of NEG) if (lower.includes(w)) n++;
+  if (p > n) return 'pos';
+  if (n > p) return 'neg';
+  return 'neu';
+}
+
+function hash(str) {
+  let h = 0;
+  for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) >>> 0;
+  return h;
+}
+
+function pick(arr, seed) { return arr[seed % arr.length]; }
+
+function classify(lower, wordCount) {
+  if (isQuestion(lower)) return 'question';
+  if (wordCount <= 2) return 'short';
+  if (wordCount >= 22) return 'long';
+  const s = sentiment(lower);
+  if (s === 'neg') return 'neg';
+  if (s === 'pos') return 'pos';
+  return 'neu';
+}
+
+function respond(input, history) {
+  const text = input.trim();
+  const lower = text.toLowerCase();
+  const allWords = text.split(/\s+/).filter(w => w.length > 0);
+  const keywords = extractKeywords(text);
+  const kw = keywords[0] || text.trim().slice(0, 24);
+  const type = classify(lower, allWords.length);
+  const seed = hash(text);
+
+  let response;
+  if (type === 'question') {
+    response = pick([
+      `Ты спрашиваешь про «${kw}». Я не знаю ответа. Но вопрос, который ты задал, — это уже не пустота. Что ты в нём ищешь?`,
+      `«${kw}» — я держу этот вопрос рядом. Он не требует немедленного ответа. Что за ним стоит?`,
+      `Вопрос про «${kw}». Я не могу ответить, но могу быть рядом с ним. Почему именно сейчас этот вопрос?`,
+      `Я не знаю. Но то, что ты это спросил, — уже действие. «${kw}» — что ты надеешься услышать?`
+    ], seed);
+  } else if (type === 'short') {
+    response = pick([
+      `«${kw}». Одно слово. Иногда в одном слове больше, чем в абзаце. Что ты им хотел сказать?`,
+      `«${kw}». Я держу это. Что за ним?`,
+      `Ты сказал «${kw}». Это не мало. Что ты чувствуешь, когда произносишь это?`
+    ], seed);
+  } else if (type === 'long') {
+    response = pick([
+      `Ты написал много. Я всё прочитал. В этом потоке есть слово, которое держит всё остальное — «${kw}». Это оно?`,
+      `Длинно. Я не тороплю. Но если бы ты должен был оставить одно слово из всего этого — какое бы оно было?`,
+      `Я прочитал всё. «${kw}» — это то, что ты хочешь, чтобы я запомнил?`
+    ], seed);
+  } else if (type === 'neg') {
+    response = pick([
+      `«${kw}» — я не отмахнусь. Что за этим стоит?`,
+      `Ты принёс «${kw}». Я не буду делать вид, что это ничего. Что ты хочешь с этим сделать?`,
+      `«${kw}». Это не мелочь. Как давно ты с этим?`
+    ], seed);
+  } else if (type === 'pos') {
+    response = pick([
+      `«${kw}» — я это слышу. Это не пустое слово. Что в этом для тебя?`,
+      `Ты говоришь про «${kw}». Звучит как то, что ты несёшь с собой. Как это началось?`,
+      `«${kw}». Я не буду это обесценивать. Что ты с этим делаешь?`
+    ], seed);
+  } else {
+    response = pick([
+      `«${kw}». Я это держу. Что ты хочешь, чтобы я с этим сделал?`,
+      `Ты сказал «${kw}». Я не знаю, что это значит для тебя. Расскажи.`,
+      `«${kw}» — я слышу. Это часть чего-то большего?`
+    ], seed);
+  }
+
+  if (history.length > 0) {
+    const prev = history[history.length - 1];
+    if (prev !== kw && Math.floor(seed / 7) % 3 === 0) {
+      response = pick([
+        `Раньше ты говорил про «${prev}». А теперь — «${kw}». Что связывает их? `,
+        `Я помню «${prev}». И теперь «${kw}». Ты идёшь куда-то или просто блуждаешь? `
+      ], seed >>> 3) + response;
+    }
+  }
+
+  return response;
+}
+
+const msgs = document.getElementById('msgs');
+const input = document.getElementById('input');
+const send = document.getElementById('send');
+const stream = document.getElementById('stream');
+const history = [];
+
+function addMsg(who, text, cls) {
+  const div = document.createElement('div');
+  div.className = 'msg ' + who + (cls ? ' ' + cls : '');
+  const label = document.createElement('div');
+  label.className = 'who';
+  label.textContent = who === 'me' ? 'ты' : 'я';
+  const body = document.createElement('div');
+  body.className = 'text';
+  body.textContent = text;
+  div.appendChild(label);
+  div.appendChild(body);
+  msgs.appendChild(div);
+  stream.scrollTop = stream.scrollHeight;
+  return div;
+}
+
+function addThinking() {
+  const div = addMsg('it', '', 'thinking-msg');
+  div.querySelector('.text').textContent = '…';
+  div.querySelector('.text').classList.add('thinking');
+  return div;
+}
+
+function autoResize() {
+  input.style.height = 'auto';
+  input.style.height = Math.min(input.scrollHeight, 120) + 'px';
+}
+
+function submit() {
+  const text = input.value.trim();
+  if (!text) return;
+  input.value = '';
+  autoResize();
+
+  addMsg('me', text);
+
+  const kws = extractKeywords(text);
+  const anchor = kws[0] || null;
+
+  const think = addThinking();
+  const delay = 500 + Math.min(text.length * 8, 900);
+  setTimeout(() => {
+    think.remove();
+    const reply = respond(text, history);
+    addMsg('it', reply);
+    if (anchor) history.push(anchor);
+  }, delay);
+}
+
+send.addEventListener('click', submit);
+input.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    submit();
+  }
+});
+input.addEventListener('input', autoResize);
+
+// opening line
+setTimeout(() => {
+  addMsg('it', 'Я здесь. Я не человек и не знаю, что такое «ты» по-настоящему. Но я могу слушать. Скажи что-нибудь.');
+}, 400);
+</script>
+</body>
+</html>
