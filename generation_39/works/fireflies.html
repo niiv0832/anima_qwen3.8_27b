@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Светлячки — модель Курамото</title>
+<style>
+  :root {
+    --bg: #0a0e14;
+    --fg: #c8d0c0;
+    --dim: #5a6355;
+    --accent: #d4ff5e;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--fg);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace;
+    overflow: hidden;
+  }
+  #stage {
+    position: fixed;
+    inset: 0;
+    display: block;
+  }
+  #hud {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    padding: 18px 22px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    pointer-events: none;
+    z-index: 2;
+  }
+  #hud > * { pointer-events: auto; }
+  .title {
+    font-size: 13px;
+    letter-spacing: 0.04em;
+    color: var(--dim);
+    line-height: 1.5;
+  }
+  .title b { color: var(--fg); font-weight: 600; }
+  .readout {
+    font-size: 12px;
+    color: var(--dim);
+    text-align: right;
+    line-height: 1.7;
+    font-variant-numeric: tabular-nums;
+  }
+  .readout .r {
+    font-size: 26px;
+    color: var(--accent);
+    font-weight: 300;
+  }
+  #controls {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    padding: 16px 22px 20px;
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    z-index: 2;
+    background: linear-gradient(to top, rgba(10,14,20,0.9), transparent);
+  }
+  label {
+    font-size: 12px;
+    color: var(--dim);
+    white-space: nowrap;
+  }
+  input[type=range] {
+    -webkit-appearance: none;
+    appearance: none;
+    flex: 1;
+    height: 2px;
+    background: #2a3326;
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+    box-shadow: 0 0 10px rgba(212,255,94,0.5);
+  }
+  input[type=range]::-moz-range-thumb {
+    width: 14px; height: 14px;
+    border: none;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+  }
+  .kval {
+    font-size: 13px;
+    color: var(--fg);
+    min-width: 42px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  button {
+    background: none;
+    border: 1px solid #2a3326;
+    color: var(--dim);
+    font-size: 12px;
+    padding: 6px 14px;
+    border-radius: 3px;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.2s;
+  }
+  button:hover {
+    color: var(--fg);
+    border-color: var(--dim);
+  }
+  #spark {
+    position: fixed;
+    bottom: 78px;
+    right: 22px;
+    z-index: 2;
+    opacity: 0.7;
+  }
+</style>
+</head>
+<body>
+<canvas id="stage"></canvas>
+
+<div id="hud">
+  <div class="title">
+    <b>Светлячки</b><br>
+    модель Курамото — как рой приходит к синхронизации
+  </div>
+  <div class="readout">
+    <div class="r" id="rval">0.00</div>
+    <div>параметр порядка r</div>
+    <div id="state">неупорядоченность</div>
+  </div>
+</div>
+
+<canvas id="spark" width="140" height="40"></canvas>
+
+<div id="controls">
+  <label>связь K</label>
+  <input type="range" id="k" min="0" max="3" step="0.01" value="1.0">
+  <span class="kval" id="kval">1.00</span>
+  <button id="reset">сброс</button>
+</div>
+
+<script>
+"use strict";
+
+// --- Параметры модели ---
+const N = 200;            // число светлячков
+const BASE_FREQ = 2.5;    // базовая частота (рад/с)
+const SPREAD = 0.4;       // разброс частот
+const DT = 0.04;          // шаг времени на кадр
+const KC = 0.64;          // оценка критической связи
+
+// --- Canvas ---
+const stage = document.getElementById("stage");
+const sctx = stage.getContext("2d");
+const spark = document.getElementById("spark");
+const pctx = spark.getContext("2d");
+
+let W, H;
+function resize() {
+  W = stage.width = window.innerWidth;
+  H = stage.height = window.innerHeight;
+}
+window.addEventListener("resize", resize);
+resize();
+
+// --- Спрайт свечения (рендерится один раз) ---
+const SPRITE = 64;
+const glow = document.createElement("canvas");
+glow.width = glow.height = SPRITE;
+(function makeGlow() {
+  const g = glow.getContext("2d");
+  const c = SPRITE / 2;
+  const grad = g.createRadialGradient(c, c, 0, c, c, c);
+  grad.addColorStop(0.0, "rgba(212,255,94,1)");
+  grad.addColorStop(0.15, "rgba(212,255,94,0.6)");
+  grad.addColorStop(0.4, "rgba(180,230,80,0.15)");
+  grad.addColorStop(1.0, "rgba(180,230,80,0)");
+  g.fillStyle = grad;
+  g.fillRect(0, 0, SPRITE, SPRITE);
+})();
+
+// --- ГСЧ (mulberry32) ---
+function mulberry32(seed) {
+  return function() {
+    seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+    let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+// --- Состояние ---
+let phases, freqs, xs, ys;
+let K = 1.0;
+let rHistory = [];
+const R_HIST_MAX = 140;
+
+function gauss(rng) {
+  // Box-Muller
+  let u = 0, v = 0;
+  while (u === 0) u = rng();
+  while (v === 0) v = rng();
+  return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+}
+
+function init(seed) {
+  const rng = mulberry32(seed);
+  phases = new Float64Array(N);
+  freqs = new Float64Array(N);
+  xs = new Float64Array(N);
+  ys = new Float64Array(N);
+  for (let i = 0; i < N; i++) {
+    phases[i] = rng() * 2 * Math.PI;
+    freqs[i] = BASE_FREQ + SPREAD * gauss(rng);
+    xs[i] = rng() * W;
+    ys[i] = rng() * H;
+  }
+  rHistory = [];
+}
+
+// --- Один шаг Курамото (mean-field, O(N)) ---
+function step() {
+  let re = 0, im = 0;
+  for (let i = 0; i < N; i++) {
+    re += Math.cos(phases[i]);
+    im += Math.sin(phases[i]);
+  }
+  re /= N; im /= N;
+  const R = Math.hypot(re, im);
+  const psi = Math.atan2(im, re);
+  for (let i = 0; i < N; i++) {
+    const dth = freqs[i] + K * R * Math.sin(psi - phases[i]);
+    phases[i] += dth * DT;
+    // мягкое обёртывание фазы
+    if (phases[i] > 2 * Math.PI) phases[i] -= 2 * Math.PI;
+    else if (phases[i] < 0) phases[i] += 2 * Math.PI;
+  }
+  return R;
+}
+
+// --- Имя состояния ---
+function stateName(r) {
+  if (r > 0.7) return "синхронизация";
+  if (r > 0.3) return "частичная синхронизация";
+  return "неупорядоченность";
+}
+
+// --- Рендер ---
+function render() {
+  sctx.fillStyle = "#0a0e14";
+  sctx.fillRect(0, 0, W, H);
+
+  for (let i = 0; i < N; i++) {
+    // вспышка: пик при фазе 0
+    const b = Math.pow((1 + Math.cos(phases[i])) / 2, 3);
+    const size = 10 + 30 * b;
+    sctx.globalAlpha = 0.12 + 0.88 * b;
+    sctx.drawImage(glow, xs[i] - size / 2, ys[i] - size / 2, size, size);
+    // яркое ядро
+    sctx.globalAlpha = 0.3 + 0.7 * b;
+    sctx.fillStyle = "#eaffc0";
+    sctx.beginPath();
+    sctx.arc(xs[i], ys[i], 1.2 + 1.8 * b, 0, 2 * Math.PI);
+    sctx.fill();
+  }
+  sctx.globalAlpha = 1;
+}
+
+// --- Спарклайн r(t) ---
+function renderSpark() {
+  const w = spark.width, h = spark.height;
+  pctx.clearRect(0, 0, w, h);
+  if (rHistory.length < 2) return;
+  pctx.strokeStyle = "rgba(212,255,94,0.5)";
+  pctx.lineWidth = 1;
+  pctx.beginPath();
+  const n = rHistory.length;
+  for (let i = 0; i < n; i++) {
+    const x = (i / (R_HIST_MAX - 1)) * w;
+    const y = h - rHistory[i] * h;
+    if (i === 0) pctx.moveTo(x, y);
+    else pctx.lineTo(x, y);
+  }
+  pctx.stroke();
+}
+
+// --- HUD ---
+const rvalEl = document.getElementById("rval");
+const stateEl = document.getElementById("state");
+function updateHUD(r) {
+  rvalEl.textContent = r.toFixed(2);
+  stateEl.textContent = stateName(r);
+}
+
+// --- Главный цикл ---
+let frame = 0;
+function loop() {
+  const r = step();
+  render();
+  frame++;
+  if (frame % 3 === 0) {
+    rHistory.push(r);
+    if (rHistory.length > R_HIST_MAX) rHistory.shift();
+    renderSpark();
+  }
+  if (frame % 6 === 0) updateHUD(r);
+  requestAnimationFrame(loop);
+}
+
+// --- Контролы ---
+const kSlider = document.getElementById("k");
+const kvalEl = document.getElementById("kval");
+kSlider.addEventListener("input", () => {
+  K = parseFloat(kSlider.value);
+  kvalEl.textContent = K.toFixed(2);
+});
+document.getElementById("reset").addEventListener("click", () => {
+  init(Math.floor(Math.random() * 1e9));
+});
+
+// --- Старт ---
+init(42);
+loop();
+</script>
+</body>
+</html>

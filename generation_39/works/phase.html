@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Phase</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #08080c;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    font-family: 'Courier New', monospace;
+    color: #fff;
+    overflow: hidden;
+    cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  canvas { display: block; }
+  .hud {
+    position: absolute;
+    font-size: 13px;
+    letter-spacing: 2px;
+    pointer-events: none;
+  }
+  #sync { top: 24px; left: 50%; transform: translateX(-50%); }
+  #combo { top: 48px; left: 50%; transform: translateX(-50%); font-size: 11px; color: #555; }
+  #hint { bottom: 24px; left: 50%; transform: translateX(-50%); color: #444; font-size: 12px; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div class="hud" id="sync">SYNC 0%</div>
+<div class="hud" id="combo"></div>
+<div class="hud" id="hint">нажми, чтобы начать</div>
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+const syncEl = document.getElementById('sync');
+const comboEl = document.getElementById('combo');
+const hintEl = document.getElementById('hint');
+
+let W, H, cx, cy;
+function resize() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+  cx = W / 2;
+  cy = H / 2;
+}
+resize();
+window.addEventListener('resize', resize);
+
+let audioCtx = null;
+function initAudio() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+}
+
+function playKick() {
+  if (!audioCtx) return;
+  const t = audioCtx.currentTime;
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(120, t);
+  osc.frequency.exponentialRampToValueAtTime(25, t + 0.12);
+  gain.gain.setValueAtTime(0.4, t);
+  gain.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+  osc.connect(gain).connect(audioCtx.destination);
+  osc.start(t);
+  osc.stop(t + 0.12);
+}
+
+function playHit(good, combo) {
+  if (!audioCtx) return;
+  const t = audioCtx.currentTime;
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  if (good) {
+    const base = 440 * Math.pow(2, (combo % 12) / 12);
+    osc.type = 'sine';
+    osc.frequency.value = base;
+    gain.gain.setValueAtTime(0.12, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+  } else {
+    osc.type = 'sawtooth';
+    osc.frequency.value = 110;
+    gain.gain.setValueAtTime(0.06, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+  }
+  osc.connect(gain).connect(audioCtx.destination);
+  osc.start(t);
+  osc.stop(t + 0.35);
+}
+
+function playSyncUp() {
+  if (!audioCtx) return;
+  const t = audioCtx.currentTime;
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(660, t);
+  osc.frequency.exponentialRampToValueAtTime(1320, t + 0.2);
+  gain.gain.setValueAtTime(0.08, t);
+  gain.gain.exponentialRampToValueAtTime(0.001, t + 0.4);
+  osc.connect(gain).connect(audioCtx.destination);
+  osc.start(t);
+  osc.stop(t + 0.4);
+}
+
+const BPM = 120;
+const BEAT_MS = 60000 / BPM;
+const HIT_WINDOW_GOOD = 60;
+const HIT_WINDOW_OK = 120;
+
+let sync = 0;
+let combo = 0;
+let maxCombo = 0;
+let lastBeatTime = 0;
+let beatCount = 0;
+let ripples = [];
+let particles = [];
+let lastTapTime = 0;
+let started = false;
+let prevSync = 0;
+
+function getPhase() {
+  if (!started) return 0;
+  const now = performance.now();
+  return ((now - lastBeatTime) % BEAT_MS) / BEAT_MS;
+}
+
+function tap() {
+  initAudio();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+
+  if (!started) {
+    started = true;
+    lastBeatTime = performance.now();
+    hintEl.textContent = '';
+    return;
+  }
+
+  const now = performance.now();
+  const phase = (now - lastBeatTime) % BEAT_MS;
+  const dist = Math.min(phase, BEAT_MS - phase);
+
+  let good = false;
+  if (dist <= HIT_WINDOW_GOOD) {
+    sync = Math.min(100, sync + 4);
+    combo++;
+    good = true;
+  } else if (dist <= HIT_WINDOW_OK) {
+    sync = Math.min(100, sync + 1);
+    combo++;
+    good = true;
+  } else {
+    sync = Math.max(0, sync - 8);
+    combo = 0;
+  }
+
+  if (combo > maxCombo) maxCombo = combo;
+  if (sync >= 100 && prevSync < 100) playSyncUp();
+  prevSync = sync;
+
+  playHit(good, combo);
+
+  ripples.push({ r: 0, maxR: 80 + sync * 0.8, alpha: 1, good });
+
+  const count = good ? 6 + Math.min(combo, 12) : 3;
+  for (let i = 0; i < count; i++) {
+    const angle = (Math.PI * 2 * i) / count + Math.random() * 0.4;
+    const speed = good ? 2 + Math.random() * 3 : 1 + Math.random() * 1.5;
+    particles.push({
+      x: cx, y: cy,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      life: 1, good
+    });
+  }
+
+  lastTapTime = now;
+}
+
+document.addEventListener('click', tap);
+document.addEventListener('keydown', (e) => {
+  if (e.code === 'Space') { e.preventDefault(); tap(); }
+});
+
+function draw() {
+  requestAnimationFrame(draw);
+  const now = performance.now();
+
+  if (started && now - lastBeatTime >= BEAT_MS) {
+    lastBeatTime += BEAT_MS;
+    beatCount++;
+    playKick();
+  }
+
+  if (started && now - lastTapTime > BEAT_MS * 4) {
+    sync = Math.max(0, sync - 0.15);
+    if (sync < 5) combo = 0;
+  }
+
+  ctx.fillStyle = '#08080c';
+  ctx.fillRect(0, 0, W, H);
+
+  if (!started) {
+    ctx.fillStyle = '#333';
+    ctx.font = '14px Courier New';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('нажми, чтобы начать', cx, cy);
+    return;
+  }
+
+  const phase = getPhase();
+  const beatPulse = Math.max(0, 1 - phase * 4);
+  const hue = 220 + sync * 1.2;
+
+  const rings = Math.floor(sync / 12);
+  for (let i = 0; i < rings; i++) {
+    const r = 60 + i * 35;
+    const wobble = Math.sin(now * 0.0008 + i * 1.7) * 8;
+    ctx.strokeStyle = `hsla(${hue + i * 15}, 60%, 50%, ${0.04 + sync * 0.0008})`;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r + wobble, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
+  const baseR = 36;
+  const pulseR = baseR + beatPulse * 12;
+  const glowR = pulseR + 25 + beatPulse * 35;
+  const grad = ctx.createRadialGradient(cx, cy, pulseR * 0.5, cx, cy, glowR);
+  grad.addColorStop(0, `hsla(${hue}, 70%, 55%, 0.25)`);
+  grad.addColorStop(1, `hsla(${hue}, 70%, 55%, 0)`);
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.arc(cx, cy, glowR, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = `hsla(${hue}, 70%, ${45 + beatPulse * 25}%, 0.85)`;
+  ctx.beginPath();
+  ctx.arc(cx, cy, pulseR, 0, Math.PI * 2);
+  ctx.fill();
+
+  const ringR = 72;
+  ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(cx, cy, ringR, 0, Math.PI * 2);
+  ctx.stroke();
+
+  const ringStart = -Math.PI / 2;
+  const ringEnd = ringStart + Math.PI * 2 * (1 - phase);
+  ctx.strokeStyle = `hsla(${hue}, 80%, 60%, 0.5)`;
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.arc(cx, cy, ringR, ringStart, ringEnd);
+  ctx.stroke();
+
+  const markerAngle = ringStart + Math.PI * 2 * (1 - phase);
+  const mx = cx + Math.cos(markerAngle) * ringR;
+  const my = cy + Math.sin(markerAngle) * ringR;
+  ctx.fillStyle = `hsla(${hue}, 80%, 70%, 0.8)`;
+  ctx.beginPath();
+  ctx.arc(mx, my, 4, 0, Math.PI * 2);
+  ctx.fill();
+
+  for (let i = ripples.length - 1; i >= 0; i--) {
+    const r = ripples[i];
+    r.r += 4;
+    r.alpha -= 0.025;
+    if (r.alpha <= 0) { ripples.splice(i, 1); continue; }
+    ctx.strokeStyle = r.good
+      ? `rgba(100, 255, 200, ${r.alpha * 0.6})`
+      : `rgba(255, 80, 80, ${r.alpha * 0.4})`;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r.r, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+    p.x += p.vx;
+    p.y += p.vy;
+    p.vx *= 0.98;
+    p.vy *= 0.98;
+    p.life -= 0.018;
+    if (p.life <= 0) { particles.splice(i, 1); continue; }
+    ctx.fillStyle = p.good
+      ? `rgba(100, 255, 200, ${p.life * 0.7})`
+      : `rgba(255, 100, 100, ${p.life * 0.5})`;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 2.5 * p.life, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  syncEl.textContent = `SYNC ${Math.round(sync)}%`;
+  syncEl.style.color = `hsl(${hue}, 70%, ${35 + sync * 0.4}%)`;
+
+  if (combo >= 3) {
+    comboEl.textContent = `×${combo}`;
+    comboEl.style.color = `hsla(${hue}, 60%, 50%, ${Math.min(1, combo * 0.1)})`;
+  } else {
+    comboEl.textContent = '';
+  }
+}
+
+draw();
+</script>
+</body>
+</html>

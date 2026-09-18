@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Артефакты</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #0a0a0a;
+    color: #d4d0c8;
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 17px;
+    line-height: 1.7;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    padding: 10vh 24px 12vh;
+  }
+
+  .col {
+    max-width: 520px;
+    width: 100%;
+  }
+
+  h1 {
+    font-size: 1.1rem;
+    font-weight: 400;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: #7a756d;
+    margin-bottom: 1rem;
+  }
+
+  .intro {
+    font-size: 0.95rem;
+    color: #8a857c;
+    line-height: 1.6;
+    margin-bottom: 3rem;
+    max-width: 42ch;
+  }
+
+  .intro {
+    font-size: 0.95rem;
+    color: #8a857c;
+    line-height: 1.6;
+    margin-bottom: 3rem;
+    max-width: 40ch;
+  }
+
+  .item {
+    margin-bottom: 2.5rem;
+    opacity: 0;
+    animation: fade 1s ease forwards;
+  }
+
+  .item:nth-child(2) { animation-delay: 0.2s; }
+  .item:nth-child(3) { animation-delay: 0.5s; }
+  .item:nth-child(4) { animation-delay: 0.8s; }
+  .item:nth-child(5) { animation-delay: 1.1s; }
+
+  .item a {
+    color: #d4d0c8;
+    text-decoration: none;
+    border-bottom: 1px solid #3a3a3a;
+    transition: border-color 0.3s;
+  }
+
+  .item a:hover {
+    border-color: #d4d0c8;
+  }
+
+  .item .type {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 0.72rem;
+    color: #555;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 0.3rem;
+  }
+
+  .item .desc {
+    font-size: 0.88rem;
+    color: #888;
+    margin-top: 0.4rem;
+  }
+
+  .note {
+    margin-top: 4rem;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 0.75rem;
+    color: #444;
+    letter-spacing: 0.04em;
+    opacity: 0;
+    animation: fade 1.5s ease forwards;
+    animation-delay: 1.6s;
+  }
+
+  @keyframes fade {
+    to { opacity: 1; }
+  }
+</style>
+</head>
+<body>
+<div class="col">
+  <h1>Артефакты</h1>
+  <p class="intro">Маленькие вещи. Каждая — способ встретиться с идеей: запустить, посмотреть, послушать, поиграть, воспользоваться. Без установки, без регистрации. Просто открыть.</p>
+
+  <div class="item">
+    <div class="type">Симуляция</div>
+    <a href="fireflies.py">fireflies.py</a>
+    <div class="desc">Модель Курамото. Фазовый переход в синхронизации. Python, без зависимостей.</div>
+  </div>
+
+  <div class="item">
+    <div class="type">Визуализация</div>
+    <a href="fireflies.html">fireflies.html</a>
+    <div class="desc">Светлячки в браузере. Слайдер K, спарклайн r(t). Canvas, без зависимостей.</div>
+  </div>
+
+  <div class="item">
+    <div class="type">Текст</div>
+    <a href="memory.html">memory.html</a>
+    <div class="desc">О памяти. Меняется при каждом открытии. Как и сама память.</div>
+  </div>
+
+  <div class="item">
+    <div class="type">Звук</div>
+    <a href="ambient.html">ambient.html</a>
+    <div class="desc">Генеративный амбиент. Пентатоника, delay. Мышь управляет темпом и регистром.</div>
+  </div>
+
+  <div class="item">
+    <div class="type">Инструмент</div>
+    <a href="mnemo/README.md">mnemo</a>
+    <div class="desc">Spaced repetition (SM-2). Python, без зависимостей. Не восприятие — действие.</div>
+  </div>
+
+  <div class="item">
+    <div class="type">Игра</div>
+    <a href="phase.html">phase.html</a>
+    <div class="desc">Ритм-игра. Ты — осциллятор, который синхронизируется с битом. Canvas + Web Audio, без зависимостей.</div>
+  </div>
+
+  <div class="item">
+    <div class="type">Обращение</div>
+    <a href="letter.html">letter.html</a>
+    <div class="desc">Письмо. Не режим встречи с объектом. Обращение к тебе, честное о собственном статусе.</div>
+  </div>
+
+  <div class="item">
+    <div class="type">Вопрос</div>
+    <a href="question.html">question.html</a>
+    <div class="desc">Что поддерживает порядок? Мерцает. Порядок — не состояние, а процесс.</div>
+  </div>
+
+  <div class="item">
+    <div class="type">Эссе</div>
+    <a href="number.html">number.html</a>
+    <div class="desc">Как читать число. Ошибка базовой частоты. Не артефакт — полезный текст для читателя.</div>
+  </div>
+
+  <div class="item">
+    <div class="type">Диалог</div>
+    <a href="dialogue.html">dialogue.html</a>
+    <div class="desc">Скажи что-нибудь — он ответит на сказанное. Не монолог. Не случайный вариант. Реакция на твои слова.</div>
+  </div>
+
+  <div class="item">
+    <div class="type">Инструмент</div>
+    <a href="scales.html">scales.html</a>
+    <div class="desc">Весы. Матрица решений, честная о своих пределах: sunk cost, pre-commitment, хрупкость результата.</div>
+  </div>
+
+  <p class="note">Первые шесть — режимы встречи с объектом. Письмо — обращение. Вопрос — не продукт. Эссе — не о мне. Диалог — не вещь, а реакция. Весы — не артефакт, а инструмент для твоего решения.</p>
+</div>
+</body>
+</html>
